@@ -1,65 +1,88 @@
-# import boto3
-# s3 = boto3.client('s3')
-#
-# with open('filename', 'rb') as data:
-#     s3.upload_fileobj(data, 'mybucket', 'mykey')
-#
-# #--Check file exists
-# #---Check Bucket exists
-# #---Upload file
-#
-#
-# http://boto3.readthedocs.io/en/latest/reference/services/s3.html#S3.Client.upload_fileobj
-#
-#
-# import boto3
-# s3 = boto3.resource('s3')
-# s3.meta.client.upload_file('/tmp/hello.txt', 'mybucket', 'hello.txt')
 
-
-#--upload_file is enough
-
-
-# import boto3
-#
-# s3 = boto3.resource('s3')
-# bucket = s3.Bucket('000000000000name')
-# bucket.wait_until_exists()
-
-#Logging Configs
 import logging
 import sys
 import os
-logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+import boto3, botocore
+
+FORMAT = "[%(levelname)s:%(filename)s:%(lineno)s-%(funcName)s()] --> %(message)s"
+logging.basicConfig(format=FORMAT)
 logging.getLogger().setLevel(logging.INFO)
 
-import boto3, botocore
-s3 = boto3.resource('s3')
-bucket_name = 'some-private-bucket'
-#bucket_name = 'bucket-to-check'
-
-bucket = s3.Bucket(bucket_name)
-def check_bucket(bucket):
+def bucket_exists(s3_rsrc,bucket_name):
+    '''
+    Check S3 bucket exists and have proper permission.
+    :param bucket:
+    :return Bool : True if Bucket exists with proper permissions.
+    '''
     try:
-        s3.meta.client.head_bucket(Bucket=bucket)
-        print("Bucket Exists!")
+        s3_rsrc.meta.client.head_bucket(Bucket=bucket_name)
         return True
     except botocore.exceptions.ClientError as e:
-        # If a client error is thrown, then check that it was a 404 error.
-        # If it was a 404 error, then the bucket does not exist.
-        error_code = int(e.response['Error']['Code'])
-        if error_code == 403:
-            print("Private Bucket. Forbidden Access!")
-            return True
-        elif error_code == 404:
-            print("Bucket Does Not Exist!")
-            return False
+        logging.info("Bucket does not exists or No permission to access it. Error : {error}".format(error=e.response['Error']))
+    return False
 
-def upload_file(local_file,s3_bucket,s3_key):
-    if not check_bucket(s3_bucket):
-        logging.error("It seems like S3 bucket check failed.Please make sure bucket exists and proper ACL")
+def s3_key_exists(s3_rsrc,bucket_name,key):
+    '''
+    To check if a key exists in bucket
+    :param s3_bucket:
+    :param key:
+    :return:Bool.
+    '''
+    # try:
+    #     s3_bucket.Object(key).get()
+    # except botocore.exceptions.ClientError as ex:
+    #     if ex.response['Error']['Code'] == 'NoSuchKey':
+    #         return False
+    # return True
+
+    try:
+        s3_rsrc.meta.client.head_object(Bucket=bucket_name,Key=key)
+        return True
+    except botocore.exceptions.ClientError as e:
+        logging.info("Bucket does not exists or No permission to access it. Error : {error}".format(error=e.response['Error']))
+    return False
+
+
+def upload_file_to_s3(local_file,s3_bucket_name,s3_key,allow_overwirite=True,profile='default'):
+    '''
+    Upload a loacl file to S3 buacket.
+    :param local_file:file path
+    :param s3_bucket: Bucket to which file to be uploaded
+    :param s3_key:Key of s3 object
+    :param profile:Profile in AWS config/credential file.
+    :param allow_overwirite : Allow overwrite existing key
+    :return: None ,Raise exception if uploading is failed.
+    '''
+    s3_session= boto3.Session(profile_name=profile)
+    s3_rsrc = s3_session.resource('s3')
+
+    if not bucket_exists(s3_rsrc,s3_bucket_name):
+        logging.error("It seems like S3 bucket check failed.Please make sure bucket exists and proper AC")
+        return
+
+    abs_path =os.path.abspath(local_file)
+    logging.info("Trying to access local file : {file}".format(file=abs_path))
+    if not os.path.isfile(abs_path):
+        logging.error("Given path do not pointing to a file.Please make sure path exists and pointing to a file")
+        return
+
+    upload_file_checks_completed=False
+    if not allow_overwirite:
+        if s3_key_exists(s3_rsrc,s3_bucket_name,s3_key):
+            logging.error("Key {key}  alreadey exists and allow_overwirite is false.Please try other key or set allow_overwirite to true".format(key=s3_key))
+            return
+        else:
+            upload_file_checks_completed=True
+    else:
+        upload_file_checks_completed = True
+
+    if upload_file_checks_completed:
+        try:
+            s3_rsrc.meta.client.upload_file(abs_path, s3_bucket_name,s3_key)
+        except Exception e:
 
 
 
-print(os.path.abspath("./s3_upload.py"))
-logging.info("hiii")
+if __name__=='__main__':
+    upload_file_to_s3("./.gitignore",'lens-dw-stag-m4m','hello2.txt',allow_overwirite=False)
+    # bucket_exists("hhhhhhhhhhh")
