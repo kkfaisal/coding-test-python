@@ -1,6 +1,5 @@
 
 import logging
-import sys
 import os
 import boto3, botocore
 
@@ -36,11 +35,12 @@ def s3_key_exists(s3_rsrc,bucket_name,key):
     # return True
 
     try:
-        s3_rsrc.meta.client.head_object(Bucket=bucket_name,Key=key)
-        return True
+        resp=s3_rsrc.meta.client.head_object(Bucket=bucket_name,Key=key)
+        if len(resp)>0:
+            return True
     except botocore.exceptions.ClientError as e:
-        logging.info("Bucket does not exists or No permission to access it. Error : {error}".format(error=e.response['Error']))
-    return False
+        if e.response['Error']['Code'] != '404':
+            return False
 
 
 def upload_file_to_s3(local_file,s3_bucket_name,s3_key,allow_overwirite=True,profile='default'):
@@ -66,23 +66,22 @@ def upload_file_to_s3(local_file,s3_bucket_name,s3_key,allow_overwirite=True,pro
         logging.error("Given path do not pointing to a file.Please make sure path exists and pointing to a file")
         return
 
-    upload_file_checks_completed=False
     if not allow_overwirite:
         if s3_key_exists(s3_rsrc,s3_bucket_name,s3_key):
             logging.error("Key {key}  alreadey exists and allow_overwirite is false.Please try other key or set allow_overwirite to true".format(key=s3_key))
             return
-        else:
-            upload_file_checks_completed=True
-    else:
-        upload_file_checks_completed = True
 
-    if upload_file_checks_completed:
-        try:
-            s3_rsrc.meta.client.upload_file(abs_path, s3_bucket_name,s3_key)
-        except Exception e:
+    try:
+        s3_rsrc.meta.client.upload_file(abs_path, s3_bucket_name,s3_key)
+    except Exception :
+        logging.error("Error when trying to upload File to S3")
+        logging.exception(Exception)
+    else:
+        logging.info("File upload completed successfully -> Bucket:{bckt},Key:{key}".format(bckt=s3_bucket_name,key=s3_key))
+
 
 
 
 if __name__=='__main__':
-    upload_file_to_s3("./.gitignore",'lens-dw-stag-m4m','hello2.txt',allow_overwirite=False)
+    upload_file_to_s3("./.gitignore",'lens-dw-stag-m4m','lklklkl',allow_overwirite=False)
     # bucket_exists("hhhhhhhhhhh")
