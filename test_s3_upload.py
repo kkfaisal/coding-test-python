@@ -1,11 +1,15 @@
 import unittest
 import s3_upload
 
+def setUpModule():
+    print("startup")
 
+def tearDownModule():
+    print("Tdwn")
 
 class TestStringMethods(unittest.TestCase):
 
-    def test_upper(self):
+    def test_upload_new_key(self):
         self.assertEqual('foo'.upper(), 'FOO')
 
     def test_isupper(self):
