@@ -7,7 +7,7 @@ logging.basicConfig(format=FORMAT)
 logging.getLogger().setLevel(logging.INFO)
 
 
-class ValidationError(Exception):
+class S3KeyExistsError(Exception):
     def __init__(self, message):
         super().__init__(message)
 
@@ -64,18 +64,18 @@ def upload_file_to_s3(local_file,s3_bucket_name,s3_key,allow_overwrite=True,prof
     logging.info("Trying to access local file : {file}".format(file=abs_path))
     if not os.path.isfile(abs_path):
         logging.error("Given path do not pointing to a file.Please make sure path exists and pointing to a file")
-        raise ValidationError("Message here")
+        raise IOError("Failed to read file")
 
     if not allow_overwrite:
         if s3_key_exists(s3_rsrc,s3_bucket_name,s3_key):
             logging.error("Key {key}  alreadey exists and allow_overwrite is false.Please try other key or set allow_overwirite to true".format(key=s3_key))
-            raise ValidationError("Message here")
+            raise S3KeyExistsError("Key already exists in S3 bucket")
 
     try:
         s3_rsrc.meta.client.upload_file(abs_path, s3_bucket_name,s3_key)
     except Exception :
         logging.error("Error when trying to upload File to S3 :")
-        logging.exception(Exception)
+        raise Exception
     else:
         logging.info("File upload completed successfully -> Bucket:{bckt},Key:{key}".format(bckt=s3_bucket_name,key=s3_key))
 
