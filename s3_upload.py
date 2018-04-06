@@ -39,7 +39,7 @@ def s3_key_exists(s3_rsrc,bucket_name,key):
             logging.info("The given key {key} already exists.Last Modified on {date}".format(key=key,date=resp['LastModified']))
             return True
     except botocore.exceptions.ClientError as e:
-        if e.response['Error']['Code'] != '404':
+        if e.response['Error']['Code'] == '404':
             return False
 
 
@@ -81,5 +81,4 @@ def upload_file_to_s3(local_file,s3_bucket_name,s3_key,allow_overwrite=True,prof
 
 
 if __name__ == '__main__':
-    upload_file_to_s3("./.gitignore",'lens-dw-stag-m4m','lklklkl',allow_overwrite=False)
-    # bucket_exists("hhhhhhhhhhh")
+    upload_file_to_s3("./.gitignore",'lens-dw-stag-m4m','test_upload/ut/small_file',allow_overwrite=False)
