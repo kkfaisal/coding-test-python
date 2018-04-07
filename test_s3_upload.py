@@ -1,15 +1,19 @@
 import unittest
 import s3_upload
-import sys
 import boto3
 import os
-import time
 
-LOCAL_FILE = ''
-S3_BUCKET_NAME = ''
-S3_KEY = ''
-S3_KEY_2 = ''
-AWS_CONFIG_PROFILE = ''
+
+
+
+#Params for testing
+# TODO: Pass these as command line args.
+LOCAL_FILE = "./test_file.txt"
+S3_BUCKET_NAME = 'faisalkk-data-test'
+S3_KEY = 'test_upload/ut/small_file_demo'
+S3_KEY_2 = 'test_upload/ut/small_file_demo2'
+AWS_CONFIG_PROFILE = 'default'
+
 S3_RSRC = None
 
 def delete_s3_object(key):
@@ -19,24 +23,10 @@ def delete_s3_object(key):
 
 
 def setUpModule():
-    global LOCAL_FILE
-    global S3_BUCKET_NAME
-    global S3_KEY
-    global AWS_CONFIG_PROFILE
     global S3_RSRC
-    global S3_KEY_2
-
-    LOCAL_FILE = "./test_file.txt"
-    S3_BUCKET_NAME = 'lens-dw-stag-m4m'
-    S3_KEY = 'test_upload/ut/small_file_demo'
-    S3_KEY_2 = 'test_upload/ut/small_file_demo2'
-    AWS_CONFIG_PROFILE = 'default'
 
     s3_session = boto3.Session(profile_name=AWS_CONFIG_PROFILE)
     S3_RSRC = s3_session.resource('s3')
-
-    # Delete object if present.
-    # delete_s3_object()
 
     #Create a local file
     with open(LOCAL_FILE,'w') as fl:
@@ -49,20 +39,25 @@ def tearDownModule():
 
 class TestS3Upload(unittest.TestCase):
 
-    def upload_new_key(self):
+    def test_upload_new_key(self):
+        # Delete object if any and make sure it deleted.
         delete_s3_object(S3_KEY)
         self.assertEqual(s3_upload.s3_key_exists(S3_RSRC, S3_BUCKET_NAME, S3_KEY), False)
+
+        # Upload new file
         s3_upload.upload_file_to_s3(LOCAL_FILE, S3_BUCKET_NAME, S3_KEY, allow_overwrite=True,
                                     profile=AWS_CONFIG_PROFILE)
-        self.assertEqual(s3_upload.s3_key_exists(S3_RSRC, S3_BUCKET_NAME, S3_KEY), False)
+        # Now key should be present
+        self.assertEqual(s3_upload.s3_key_exists(S3_RSRC, S3_BUCKET_NAME, S3_KEY), True)
 
 
     def test_upload_existing_key(self):
-        #Upload a file with key
+
+        # Upload a file with a key
         s3_upload.upload_file_to_s3(LOCAL_FILE,S3_BUCKET_NAME,S3_KEY_2,allow_overwrite=True,profile=AWS_CONFIG_PROFILE)
         self.assertEqual(s3_upload.s3_key_exists(S3_RSRC, S3_BUCKET_NAME, S3_KEY_2), True)
 
-        #Again try to upload with same key
+        # Again try to upload with same key with allow_overwrite=False.It should fail.
         with self.assertRaises(s3_upload.S3KeyExistsError):
             s3_upload.upload_file_to_s3(LOCAL_FILE, S3_BUCKET_NAME, S3_KEY_2, allow_overwrite=False,profile=AWS_CONFIG_PROFILE)
         delete_s3_object(S3_KEY_2)

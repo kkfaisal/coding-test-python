@@ -1,3 +1,10 @@
+"""
+Solution to Question1.
+By defult file uploaded will overwrite if key is already existing.
+There is a flag allow_overwrite ,if set to False,will upload the file only if key is not present in s3.
+Unit test cases are included.
+"""
+
 import logging
 import os
 import boto3, botocore
@@ -81,4 +88,7 @@ def upload_file_to_s3(local_file,s3_bucket_name,s3_key,allow_overwrite=True,prof
 
 
 if __name__ == '__main__':
-    upload_file_to_s3("./.gitignore",'lens-dw-stag-m4m','test_upload/ut/small_file',allow_overwrite=False)
+    s3_bucket_name="faisalkk-data-test"
+    local_file_path="./README.md"
+    s3_key='testing/demo/file'
+    upload_file_to_s3(local_file_path,s3_bucket_name,s3_key,allow_overwrite=True)
