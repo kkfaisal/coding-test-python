@@ -1,5 +1,5 @@
 """
-Answer for question 8.
+Answer for question 7.
 
 """
 import time
